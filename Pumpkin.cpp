@@ -2,6 +2,7 @@
 #include <msclr/marshal_cppstd.h>
 #include "Cryptodll.h"
 #include <iostream>
+#include <fstream>
 
 using namespace System;
 using namespace System::Windows::Forms;

@@ -10,6 +10,51 @@
 
 using namespace CryptoPP;
 
+// Функция для шифрования/расшифрования файла с использованием пользовательского ключа
+CRYPTODLL_API const char* ProcessFileWithKey(const char* fileContent, const char* userKey, const char* mode) {
+    try {
+        std::string content(fileContent);
+        std::string key(userKey); // Ключ, предоставленный пользователем
+        std::string result;
+
+        // Проверяем длину ключа
+        if (key.size() != 16 && key.size() != 24 && key.size() != 32) {
+            return _strdup("Invalid key length. Must be 128, 192, or 256 bits.");
+        }
+
+        // Преобразуем строковый ключ в SecByteBlock
+        CryptoPP::SecByteBlock keyBytes(reinterpret_cast<const CryptoPP::byte*>(key.data()), key.size());
+
+        if (std::string(mode) == "encrypt") {
+            // Шифрование
+            CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption encryptor;
+            encryptor.SetKey(keyBytes, keyBytes.size());
+
+            CryptoPP::StringSource ss(content, true,
+                new CryptoPP::StreamTransformationFilter(encryptor,
+                    new CryptoPP::StringSink(result)
+                )
+            );
+        }
+        else if (std::string(mode) == "decrypt") {
+            // Расшифрование
+            CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption decryptor;
+            decryptor.SetKey(keyBytes, keyBytes.size());
+
+            CryptoPP::StringSource ss(content, true,
+                new CryptoPP::StreamTransformationFilter(decryptor,
+                    new CryptoPP::StringSink(result)
+                )
+            );
+        }
+
+        return _strdup(result.c_str());
+    }
+    catch (const CryptoPP::Exception& ex) {
+        return nullptr;
+    }
+}
+
 // Генерация AES-ключа
 std::string GenerateAESKey(int keySize) {
     AutoSeededRandomPool rng;
