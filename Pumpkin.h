@@ -3,6 +3,8 @@
 #include <msclr/marshal_cppstd.h>
 #include "Cryptodll.h"
 #include <fstream>
+#include <string>
+#include <iostream>
 
 namespace Pumpkin {
 
@@ -22,9 +24,7 @@ namespace Pumpkin {
 		Pumpkin(void)
 		{
 			InitializeComponent();
-			//
-			//TODO: добавьте код конструктора
-			//
+			processedContent = new std::string(); // Инициализация строки
 		}
 
 	protected:
@@ -37,7 +37,11 @@ namespace Pumpkin {
 			{
 				delete components;
 			}
+			// Освобождение памяти
+			delete processedContent;
 		}
+	private:
+		std::string* processedContent; // Указатель на std::string для хранения данных
 
 	private: System::Windows::Forms::ComboBox^ AlgCrypt;
 	private: System::Windows::Forms::OpenFileDialog^ openFileDialog1;
@@ -370,12 +374,9 @@ namespace Pumpkin {
 
 	private: System::Void Pumpkin_Load(System::Object^ sender, System::EventArgs^ e) {
 	}
-	
+
 		   // Обновление статуса в progressBar1
-	private: System::Void UpdateProgress(String^ status) {
-		progressBar1->Value = 100; // Устанавливаем прогресс на максимум (или можно сделать динамическим)
-		textBox2->Text = status;   // textBox2 используется для отображения текста статуса
-}
+	private: System::Void UpdateProgress(String^ status);
 
 	private: System::Void Pumpkin::button1_Click(System::Object^ sender, System::EventArgs^ e) {
 		// Переключаем текст кнопки
@@ -404,110 +405,12 @@ namespace Pumpkin {
 			textBox1->Text = files[0]; // Отобразить путь к файлу в текстовом поле
 		}
 	}
+	
+	private: System::Void button3_Click(System::Object^ sender, System::EventArgs^ e);
 
-	private: System::Void button3_Click(System::Object^ sender, System::EventArgs^ e) {
-		// Получаем выбранный тип алгоритма из ComboBox (AlgCrypt)
-		String^ selectedAlg = AlgCrypt->Text;
-		if (String::IsNullOrWhiteSpace(selectedAlg)) {
-			MessageBox::Show("Выберите алгоритм для генерации ключа.", "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
-			return;
-		}
+	private: System::Void button4_Click(System::Object^ sender, System::EventArgs^ e);
 
-		// Преобразуем .NET строку в std::string
-		msclr::interop::marshal_context ctx;
-		const char* nativeAlg = ctx.marshal_as<const char*>(selectedAlg);
-
-		// Генерируем ключ
-		const char* key = GenerateKey(nativeAlg);
-		if (key == nullptr) {
-			MessageBox::Show("Ошибка при генерации ключа.", "Ошибка", MessageBoxButtons::OK, MessageBoxIcon::Error);
-			return;
-		}
-
-		// Отображаем ключ в textBox3
-		textBox3->Text = gcnew String(key);
-
-		// Освобождаем память
-		FreeKeyString(key);
-	}
-
-
-	private: System::Void button4_Click(System::Object^ sender, System::EventArgs^ e) {
-		// Проверяем, есть ли файл в textBox1
-		String^ filePath = textBox1->Text;
-		if (String::IsNullOrWhiteSpace(filePath)) {
-			UpdateProgress("Пожалуйста, добавьте файл через Drag&Drop.");
-			return;
-		}
-
-		// Проверяем, есть ли ключ в textBox3
-		String^ keyText = textBox3->Text;
-		if (String::IsNullOrWhiteSpace(keyText)) {
-			UpdateProgress("Сначала сгенерируйте ключ, нажав кнопку 'Сгенерировать ключ'.");
-			return;
-		}
-
-		// Преобразуем путь файла и ключ в std::string
-		msclr::interop::marshal_context ctx;
-		std::string nativeFilePath = ctx.marshal_as<std::string>(filePath);
-		std::string nativeKey = ctx.marshal_as<std::string>(keyText);
-
-		// Читаем содержимое файла
-		std::ifstream inputFile(nativeFilePath, std::ios::binary);
-		if (!inputFile.is_open()) {
-			UpdateProgress("Не удалось открыть файл.");
-			return;
-		}
-
-		std::string fileContent((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
-		inputFile.close();
-
-		// Определяем режим (шифрование или расшифрование)
-		String^ button1Text = button1->Text;
-		std::string mode = (button1Text == "Зашифровать") ? "encrypt" : "decrypt";
-
-		// Обработка файла с использованием ключа
-		const char* result = ProcessFileWithKey(fileContent.c_str(), nativeKey.c_str(), mode.c_str());
-		if (result == nullptr) {
-			UpdateProgress("Ошибка при обработке файла.");
-			return;
-		}
-
-		// Сохраняем результат в файл
-		processedContent = std::string(result); // Сохраняем результат для дальнейшего сохранения через button5_Click
-		FreeKeyString(result);
-
-		UpdateProgress(mode == "encrypt" ? "Файл зашифрован." : "Файл расшифрован.");
-	}
-
-	private: System::Void button5_Click(System::Object^ sender, System::EventArgs^ e) {
-		// Проверяем, есть ли данные для сохранения
-		if (processedContent.empty()) {
-			UpdateProgress("Нет данных для сохранения. Выполните шифрование или расшифрование.");
-			return;
-		}
-
-		// Открываем диалог сохранения файла
-		SaveFileDialog^ saveFileDialog = gcnew SaveFileDialog();
-		saveFileDialog->Filter = "Все файлы (*.*)|*.*";
-		if (saveFileDialog->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
-			String^ savePath = saveFileDialog->FileName;
-			msclr::interop::marshal_context ctx;
-			std::string nativeSavePath = ctx.marshal_as<std::string>(savePath);
-
-			// Сохраняем данные в файл
-			std::ofstream outputFile(nativeSavePath, std::ios::binary);
-			if (!outputFile.is_open()) {
-			 UpdateProgress("Не удалось сохранить файл.");
-			 return;
-			}
-
-			outputFile.write(processedContent.data(), processedContent.size());
-			outputFile.close();
-
-			UpdateProgress("Файл сохранен.");
-		}
-	}
+	private: System::Void button5_Click(System::Object^ sender, System::EventArgs^ e);
 	
 
 };
