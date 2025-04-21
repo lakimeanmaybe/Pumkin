@@ -25,6 +25,8 @@ namespace Pumpkin {
 		{
 			InitializeComponent();
 			processedContent = new std::string(); // Инициализация строки
+			void SaveProcessedFile(const char* data, const std::string & fileSuffix);
+
 		}
 
 	protected:
@@ -42,6 +44,7 @@ namespace Pumpkin {
 		}
 	private:
 		std::string* processedContent; // Указатель на std::string для хранения данных
+
 
 	private: System::Windows::Forms::ComboBox^ AlgCrypt;
 	private: System::Windows::Forms::OpenFileDialog^ openFileDialog1;

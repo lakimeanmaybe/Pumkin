@@ -17,54 +17,79 @@ int main(array<String^>^ args)
     Application::Run(% form);
 }
 
-// Обработчик кнопки "Выполнить" (button4_Click)
-void Pumpkin::Pumpkin::button4_Click(System::Object^ sender, System::EventArgs^ e) {
-
-    // Проверяем, есть ли файл в textBox1
+void Pumpkin::Pumpkin::SaveProcessedFile(const char* data, const std::string& fileSuffix) {
     String^ filePath = textBox1->Text;
-    if (String::IsNullOrWhiteSpace(filePath)) {
-        UpdateProgress("Пожалуйста, добавьте файл через Drag&Drop.");
+    std::string originalPath = msclr::interop::marshal_as<std::string>(filePath);
+    std::string newFilePath = originalPath + "." + fileSuffix;
+
+    std::ofstream outputFile(newFilePath, std::ios::binary);
+    if (!outputFile) {
+        UpdateProgress("Ошибка при сохранении файла.");
         return;
     }
 
-    // Проверяем, есть ли ключ в textBox3
-    String^ keyText = textBox3->Text;
-    if (String::IsNullOrWhiteSpace(keyText)) {
-        UpdateProgress("Сначала сгенерируйте ключ, нажав кнопку 'Сгенерировать ключ'.");
+    outputFile.write(data, strlen(data));
+    outputFile.close();
+
+    UpdateProgress("Файл сохранён как: " + gcnew String(newFilePath.c_str()));
+}
+
+void Pumpkin::Pumpkin::button4_Click(System::Object^ sender, System::EventArgs^ e) {
+    // Получаем ключ из textBox3
+    String^ keyHex = textBox3->Text;
+    if (String::IsNullOrWhiteSpace(keyHex)) {
+        UpdateProgress("Ошибка: Ключ не задан.");
         return;
     }
 
-    // Преобразуем путь файла и ключ в std::string
-    msclr::interop::marshal_context ctx;
-    std::string nativeFilePath = ctx.marshal_as<std::string>(filePath);
-    std::string nativeKey = ctx.marshal_as<std::string>(keyText);
+    // Преобразование ключа в формат char*
+    IntPtr keyPtr = Marshal::StringToHGlobalAnsi(keyHex);
+    const char* userKey = static_cast<const char*>(keyPtr.ToPointer());
 
     // Читаем содержимое файла
-    std::ifstream inputFile(nativeFilePath, std::ios::binary);
-    if (!inputFile.is_open()) {
-        UpdateProgress("Не удалось открыть файл.");
+    String^ filePath = textBoxFile->Text;
+    if (String::IsNullOrWhiteSpace(filePath)) {
+        UpdateProgress("Ошибка: Выберите файл.");
+        Marshal::FreeHGlobal(keyPtr);
         return;
     }
 
-    std::string fileContent((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
+    std::ifstream inputFile(msclr::interop::marshal_as<std::string>(filePath), std::ios::binary);
+    if (!inputFile) {
+        UpdateProgress("Ошибка при открытии файла.");
+        Marshal::FreeHGlobal(keyPtr);
+        return;
+    }
+
+    std::string fileData((std::istreambuf_iterator<char>(inputFile)), std::istreambuf_iterator<char>());
     inputFile.close();
 
-    // Определяем режим (шифрование или расшифрование)
-    String^ button1Text = button1->Text;
-    std::string mode = (button1Text == "Зашифровать") ? "encrypt" : "decrypt";
+    // Выполняем шифрование или расшифровку в зависимости от состояния button1
+    const char* processedData = nullptr;
+    if (button1->Text == "Зашифровать") {
+        processedData = ProcessFileWithKey(fileData.c_str(), userKey, "encrypt");
+    }
+    else if (button1->Text == "Расшифровать") {
+        processedData = ProcessFileWithKey(fileData.c_str(), userKey, "decrypt");
+    }
+    else {
+        UpdateProgress("Ошибка: Неверное состояние кнопки.");
+        Marshal::FreeHGlobal(keyPtr);
+        return;
+    }
 
-    // Обработка файла с использованием ключа
-    const char* result = ProcessFileWithKey(fileContent.c_str(), nativeKey.c_str(), mode.c_str());
-    if (result == nullptr) {
+    Marshal::FreeHGlobal(keyPtr);
+
+    if (!processedData) {
         UpdateProgress("Ошибка при обработке файла.");
         return;
     }
 
-    // Сохраняем результат в указатель processedContent
-    *processedContent = result; // Используем указатель
-    FreeKeyString(result);
+    // Сохраняем обработанные данные
+    SaveProcessedFile(processedData, (button1->Text == "Зашифровать") ? "encrypted" : "decrypted");
+    FreeKeyString(processedData);
 
-    UpdateProgress(mode == "encrypt" ? "Файл зашифрован." : "Файл расшифрован.");
+    UpdateProgress("Файл успешно обработан.");
 }
 
 // Обработчик кнопки "Сохранить как" (button5_Click)
@@ -97,31 +122,59 @@ void Pumpkin::Pumpkin::button5_Click(System::Object^ sender, System::EventArgs^ 
     }
 }
 
-// Обработчик кнопки "Сгенерировать ключ" (button3_Click)
 void Pumpkin::Pumpkin::button3_Click(System::Object^ sender, System::EventArgs^ e) {
-    // Получаем выбранный тип алгоритма из ComboBox (AlgCrypt)
+    // Получаем выбранный алгоритм
     String^ selectedAlg = AlgCrypt->Text;
     if (String::IsNullOrWhiteSpace(selectedAlg)) {
         UpdateProgress("Выберите алгоритм для генерации ключа.");
         return;
     }
 
-    // Преобразуем .NET строку в std::string
-    msclr::interop::marshal_context ctx;
-    const char* nativeAlg = ctx.marshal_as<const char*>(selectedAlg);
+    // Генерация ключа через Cryptodll
+    const char* binaryKey = nullptr;
+    if (selectedAlg == "AES-128") {
+        binaryKey = GenerateKey("AES-128");
+    }
+    else if (selectedAlg == "AES-192") {
+        binaryKey = GenerateKey("AES-192");
+    }
+    else if (selectedAlg == "AES-256") {
+        binaryKey = GenerateKey("AES-256");
+    }
+    else if (selectedAlg == "Магма") {
+        binaryKey = GenerateKey("Магма");
+    }
+    else if (selectedAlg == "Магма на тройном ключе") {
+        binaryKey = GenerateKey("Магма на тройном ключе");
+    }
+    else {
+        UpdateProgress("Неподдерживаемый алгоритм.");
+        return;
+    }
 
-    // Генерируем ключ
-    const char* key = GenerateKey(nativeAlg);
-    if (key == nullptr) {
+    if (binaryKey == nullptr) {
         UpdateProgress("Ошибка при генерации ключа.");
         return;
     }
 
-    // Отображаем ключ в textBox3
-    textBox3->Text = gcnew String(key);
+    // Сохраняем бинарный ключ в processedContent
+    *processedContent = binaryKey;
 
-    // Освобождаем память
-    FreeKeyString(key);
+    // Преобразуем бинарный ключ в hex через Cryptodll
+    const char* hexKey = ConvertToHex(binaryKey, strlen(binaryKey));
+    if (hexKey == nullptr) {
+        UpdateProgress("Ошибка при преобразовании ключа в hex.");
+        FreeKeyString(binaryKey);
+        return;
+    }
+
+    // Отображаем ключ в формате hex
+    textBox3->Text = gcnew String(hexKey);
+
+    // Освобождаем память, выделенную Cryptodll
+    FreeKeyString(binaryKey);
+    FreeKeyString(hexKey);
+
     UpdateProgress("Ключ сгенерирован.");
 }
 
