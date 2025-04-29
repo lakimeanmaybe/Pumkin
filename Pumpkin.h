@@ -108,7 +108,6 @@ namespace Pumpkin {
 			this->AlgCrypt->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
 				| System::Windows::Forms::AnchorStyles::Left)
 				| System::Windows::Forms::AnchorStyles::Right));
-			this->AlgCrypt->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->AlgCrypt->BackColor = System::Drawing::Color::DarkGray;
 			this->AlgCrypt->Cursor = System::Windows::Forms::Cursors::Arrow;
 			this->AlgCrypt->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
@@ -120,7 +119,6 @@ namespace Pumpkin {
 			this->AlgCrypt->Name = L"AlgCrypt";
 			this->AlgCrypt->Size = System::Drawing::Size(587, 37);
 			this->AlgCrypt->TabIndex = 0;
-			this->AlgCrypt->SelectedIndex = -1;  // Это сделает текст видимым
 			this->AlgCrypt->Text = L"Выберете алгоритм шифрования...";
 			// 
 			// openFileDialog1
@@ -417,5 +415,15 @@ namespace Pumpkin {
 	private: System::Void button3_Click(System::Object^ sender, System::EventArgs^ e);
 	
 
+	private: System::Void button2_Click(System::Object^ sender, System::EventArgs^ e) {
+		// Создаем диалоговое окно для выбора файла
+		openFileDialog1->Filter = "All Files (*.*)|*.*";
+		openFileDialog1->Title = "Выберите файл";
+
+		if (openFileDialog1->ShowDialog() == System::Windows::Forms::DialogResult::OK) {
+			// Сохраняем путь к файлу в textBox1
+			textBox1->Text = openFileDialog1->FileName;
+		}
+	}
 };
 }
