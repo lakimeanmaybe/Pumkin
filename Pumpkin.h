@@ -241,6 +241,7 @@ namespace Pumpkin {
 			this->button4->TabIndex = 6;
 			this->button4->Text = L"Выполнить";
 			this->button4->UseVisualStyleBackColor = false;
+			this->button4->Click += gcnew System::EventHandler(this, &Pumpkin::button4_Click);
 			// 
 			// button5
 			// 
@@ -257,6 +258,7 @@ namespace Pumpkin {
 			this->button5->TabIndex = 7;
 			this->button5->Text = L"Сохранить как";
 			this->button5->UseVisualStyleBackColor = false;
+			this->button5->Click += gcnew System::EventHandler(this, &Pumpkin::button5_Click);
 			// 
 			// comboBox1
 			// 
@@ -426,5 +428,9 @@ namespace Pumpkin {
 			textBox1->Text = openFileDialog1->FileName;
 		}
 	}
+
+	private: System::Void button4_Click(System::Object^ sender, System::EventArgs^ e);
+
+	private: System::Void button5_Click(System::Object^ sender, System::EventArgs^ e);
 };
 }
