@@ -206,6 +206,7 @@ namespace Pumpkin {
 			this->button2->TabIndex = 4;
 			this->button2->Text = L"Âûבונועו פאיכ";
 			this->button2->UseVisualStyleBackColor = false;
+			this->button2->Click += gcnew System::EventHandler(this, &Pumpkin::button2_Click);
 			// 
 			// button3
 			// 
