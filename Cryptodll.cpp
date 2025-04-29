@@ -12,7 +12,7 @@
 using namespace CryptoPP;
 
 // Шифрование файла с использованием AES
-CRYPTODLL_API void EncryptFileAES(const char* inputFile, const char* outputFile, const char* hexKey) {
+void EncryptFileAES(const char* inputFile, const char* outputFile, const char* hexKey) {
     // Декодируем ключ из hex-строки
     SecByteBlock key(AES::DEFAULT_KEYLENGTH);
     StringSource(hexKey, true, new HexDecoder(new ArraySink(key, key.size())));
@@ -25,10 +25,14 @@ CRYPTODLL_API void EncryptFileAES(const char* inputFile, const char* outputFile,
     CBC_Mode<AES>::Encryption encryptor;
     encryptor.SetKeyWithIV(key, key.size(), iv);
 
+    // Сохраняем IV в начало выходного файла
+    FileSink out(outputFile, true);
+    out.Put(iv, sizeof(iv)); // Записываем IV
+
     // Шифруем файл
     FileSource(inputFile, true,
         new StreamTransformationFilter(encryptor,
-            new FileSink(outputFile)
+            new Redirector(out) // Направляем зашифрованный вывод в файл
         )
     );
 
@@ -36,26 +40,50 @@ CRYPTODLL_API void EncryptFileAES(const char* inputFile, const char* outputFile,
 }
 
 // Расшифрование файла с использованием AES
-CRYPTODLL_API void DecryptFileAES(const char* inputFile, const char* outputFile, const char* hexKey) {
-    // Декодируем ключ из hex-строки
-    SecByteBlock key(AES::DEFAULT_KEYLENGTH);
-    StringSource(hexKey, true, new HexDecoder(new ArraySink(key, key.size())));
+void DecryptFileAES(const char* inputFile, const char* outputFile, const char* hexKey) {
+    try {
+        // Декодируем ключ из hex-строки
+        SecByteBlock key(AES::DEFAULT_KEYLENGTH);
+        StringSource(hexKey, true, new HexDecoder(new ArraySink(key, key.size())));
 
-    // Настраиваем расшифрование в режиме CBC
-    byte iv[AES::BLOCKSIZE];
-    FileSource(inputFile, false).Pump(sizeof(iv)); // Читаем IV из начала файла
+        // Настраиваем расшифрование в режиме CBC
+        byte iv[AES::BLOCKSIZE];
 
-    CBC_Mode<AES>::Decryption decryptor;
-    decryptor.SetKeyWithIV(key, key.size(), iv);
+        // Открываем входной файл
+        FileSource inFile(inputFile, false);
 
-    // Расшифровываем файл
-    FileSource(inputFile, true,
-        new StreamTransformationFilter(decryptor,
-            new FileSink(outputFile)
-        )
-    );
+        // Читаем IV из первых 16 байт файла
+        inFile.Pump(sizeof(iv));
+        inFile.Get(iv, sizeof(iv));
 
-    std::cout << "Файл успешно расшифрован: " << outputFile << std::endl;
+        CBC_Mode<AES>::Decryption decryptor;
+        decryptor.SetKeyWithIV(key, key.size(), iv);
+
+        // Расшифровываем оставшуюся часть файла
+        FileSource(inputFile, true,
+            new StreamTransformationFilter(decryptor,
+                new FileSink(outputFile)
+            ),
+            true // Пропускаем первые 16 байт (где хранится IV)
+        );
+
+        std::cout << "Файл успешно расшифрован: " << outputFile << std::endl;
+
+        // Отладочный вывод: Содержимое расшифрованного файла
+        std::ifstream resultFile(outputFile, std::ios::binary);
+        char buffer[256] = { 0 };
+        resultFile.read(buffer, 256); // Читаем первые байты расшифрованного файла
+        resultFile.close();
+
+        std::cout << "Первые байты расшифрованного файла: " << buffer << std::endl;
+
+    }
+    catch (const CryptoPP::Exception& e) {
+        std::cerr << "Ошибка криптографии: " << e.what() << std::endl;
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Ошибка: " << e.what() << std::endl;
+    }
 }
 
 // Генерация AES-ключа
