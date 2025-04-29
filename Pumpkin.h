@@ -44,9 +44,12 @@ namespace Pumpkin {
 		}
 	private:
 		std::string* processedContent; // Указатель на std::string для хранения данных
-
-
 	private: System::Windows::Forms::ComboBox^ AlgCrypt;
+
+	private:
+
+
+
 	private: System::Windows::Forms::OpenFileDialog^ openFileDialog1;
 	private: System::Windows::Forms::TextBox^ textBox1;
 	private: System::Windows::Forms::TextBox^ textBox2;
@@ -101,9 +104,11 @@ namespace Pumpkin {
 			// 
 			// AlgCrypt
 			// 
+			this->AlgCrypt->AllowDrop = true;
 			this->AlgCrypt->Anchor = static_cast<System::Windows::Forms::AnchorStyles>((((System::Windows::Forms::AnchorStyles::Top | System::Windows::Forms::AnchorStyles::Bottom)
 				| System::Windows::Forms::AnchorStyles::Left)
 				| System::Windows::Forms::AnchorStyles::Right));
+			this->AlgCrypt->DropDownStyle = System::Windows::Forms::ComboBoxStyle::DropDownList;
 			this->AlgCrypt->BackColor = System::Drawing::Color::DarkGray;
 			this->AlgCrypt->Cursor = System::Windows::Forms::Cursors::Arrow;
 			this->AlgCrypt->FlatStyle = System::Windows::Forms::FlatStyle::Flat;
@@ -115,6 +120,7 @@ namespace Pumpkin {
 			this->AlgCrypt->Name = L"AlgCrypt";
 			this->AlgCrypt->Size = System::Drawing::Size(587, 37);
 			this->AlgCrypt->TabIndex = 0;
+			this->AlgCrypt->SelectedIndex = -1;  // Это сделает текст видимым
 			this->AlgCrypt->Text = L"Выберете алгоритм шифрования...";
 			// 
 			// openFileDialog1
@@ -236,7 +242,6 @@ namespace Pumpkin {
 			this->button4->TabIndex = 6;
 			this->button4->Text = L"Выполнить";
 			this->button4->UseVisualStyleBackColor = false;
-			this->button4->Click += gcnew System::EventHandler(this, &Pumpkin::button4_Click);
 			// 
 			// button5
 			// 
@@ -253,7 +258,6 @@ namespace Pumpkin {
 			this->button5->TabIndex = 7;
 			this->button5->Text = L"Сохранить как";
 			this->button5->UseVisualStyleBackColor = false;
-			this->button5->Click += gcnew System::EventHandler(this, &Pumpkin::button5_Click);
 			// 
 			// comboBox1
 			// 
@@ -355,6 +359,7 @@ namespace Pumpkin {
 			// 
 			this->AutoScaleDimensions = System::Drawing::SizeF(12, 25);
 			this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
+			this->AutoValidate = System::Windows::Forms::AutoValidate::Disable;
 			this->BackColor = System::Drawing::Color::DimGray;
 			this->ClientSize = System::Drawing::Size(1200, 729);
 			this->Controls->Add(this->tableLayoutPanel2);
@@ -410,10 +415,6 @@ namespace Pumpkin {
 	}
 	
 	private: System::Void button3_Click(System::Object^ sender, System::EventArgs^ e);
-
-	private: System::Void button4_Click(System::Object^ sender, System::EventArgs^ e);
-
-	private: System::Void button5_Click(System::Object^ sender, System::EventArgs^ e);
 	
 
 };
